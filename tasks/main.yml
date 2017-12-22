@@ -1,0 +1,24 @@
+- name: Check installation via apt
+  set_fact:
+    install_apt: ansible_distribution == 'Ubuntu' and ansible_distribution_major_version|int >= 17
+
+- name: Install the zstandard package in Debian derivatives
+  apt: name=zstd state=installed update_cache=yes
+  when: install_apt
+
+- block:
+    - tempfile: state=directory
+      register: temp_dir
+
+    - unarchive:
+        src: https://github.com/facebook/zstd/archive/v1.3.3.tar.gz
+        remote_src: yes
+        dest: "{{ temp_dir.path }}"
+
+    - make:
+        chdir: "{{ temp_dir.path }}/zstd-1.3.3"
+        target: install
+
+  always:
+    - file: path="{{ temp_dir.path }}" state=absent
+  when: not install_apt
